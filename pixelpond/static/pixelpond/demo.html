@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+      django-pixelpond - abiogenesis demo
+    </title>
+    
+    <script type="text/javascript" src="js/lib/jquery.min.js"></script>
+    <script type="text/javascript" src="js/lib/jcanvas.min.js"></script>
+    <script type="text/javascript" src="js/lib/underscore.min.js"></script>
+    <script type="text/javascript" src="js/lib/thoracic.js"></script>
+    <script type="text/javascript" src="js/lib/mersenne.js"></script>
+    
+    <script type="text/javascript" src="js/pixelpond.js"></script>
+    <script type="text/javascript" src="js/long.js"></script>
+    <script type="text/javascript" src="js/settings.js"></script>
+    <script type="text/javascript" src="js/helpers.js"></script>
+    <script type="text/javascript" src="js/network.js"></script>
+    <script type="text/javascript" src="js/simulator.js"></script>
+    <script type="text/javascript" src="js/ui.js"></script>
+    <script type="text/javascript">
+      var PP = PixelPond;
+      var demo = function(){
+        var pond = new PP.Pond({
+          width: 128,
+          height: 128
+        });
+        
+        var simulator = new PP.Simulator({
+          pond: pond,
+          cyclesPerEra: 64
+        });
+        
+        var canvas = new PP.Canvas({
+          simulator: simulator
+        });
+        
+        $('#pond').append(canvas.$el);
+        
+        simulator.run(32);
+      };
+      
+      var test = function(){
+        PP.nice(1000);
+        PP.delay(alert, null, 'Hi!');
+        
+        if('Hi!' !== PP.trim('    Hi!   \n')){
+          throw new Error('trim is broken');
+        }
+      };
+      
+      $(demo);
+    </script>
+    
+    <style type="text/css">
+      body {
+        background-color: #f0f0f0;
+        color: #202020;
+      }
+      
+      #page {
+        margin: 0 auto;
+        width: 600px;
+      }
+      
+      #pond canvas {
+        border: 2px solid #ff0000;
+      }
+      
+      #pond canvas.running {
+        border: 2px solid #00ff00;
+      }
+    </style>
+  </head>
+  
+  <body>
+    <div id="page">
+      <h1>abiogenesis demo</h1>
+      <h2>django-pixelpond</h2>
+      
+      <div id="pond"></div>
+      
+      <p>
+        This demo initializes an empty pond and then runs it. Due to random
+        perturbations eventually viable pixels are produced and proceed to
+        replicate.  This is referred to as <i>abiogenesis</i>.
+      </p>
+    </div>
+  </body>
+</html>

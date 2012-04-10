@@ -27,7 +27,7 @@ The simulator has just a few registers and pointers.
 Memory
 ------
 Each pixel maintains its own memory, an array of ``byte``s, referred to
-as ``mem``.  The length of ``mem`` is equal to the depth of the pond.
+as ``memory``.  The length of ``memory`` is equal to the depth of the pond.
 
 Instructions
 ------------
@@ -39,7 +39,8 @@ All instructions (save for ``LOOP`` and ``REP``, as described below) advance
 ``ex`` by their cost (which is currently 1 for all instructions) upon execution.
 
 In the following, a "neighboring pixel" is the nearest pixel in the direction
-indicated by ``dx``.
+indicated by ``dx``.  Permission depends on the sense of the interaction and
+various other factors; see permissions.rst.
 
 * ``ZERO``:
   Zero ``rx``, ``dx``, ``cx``, and ``gp``.
@@ -51,6 +52,9 @@ indicated by ``dx``.
   Increment ``rx``.
 * ``DECR``:
   Decrement ``rx``.
+* ``XCHG``:
+  Skip the next instruction (advance ``ip`` by 2) and instead exchange its
+  value with with ``rx``.  
 * ``READ``:
   Read the ``genome[gp]`` into ``rx``.
 * ``WRITE``:
@@ -60,26 +64,26 @@ indicated by ``dx``.
 * ``OUT``:
   Write ``rx`` into ``mem[gp]``.
 * ``POST``:
-  Write ``rx`` into ``cx``.
+  Write ``rx`` into the neighboring pixel's communication register, if
+  permitted.
 * ``RECV``:
-  Read the neighboring pixel's communication register into ``rx``.
+  Read ``cx`` into ``rx``.
+* ``SENSE``:
+  Read the neighboring pixel's energy register into ``rx``, if permitted.
 * ``LOOP``:
   Advance ``ip`` to the next ``REP`` instruction if ``rx`` is 0.
 * ``REP``:
   Rewind ``ip`` to the previous ``LOOP`` instruction is ``rx`` is not 0.
-* ``TURN``:
-  Increment ``dx``.
-* ``XCHG``:
-  Skip the next instruction (advance ``ip`` by 2) and instead exchange its
-  value with with ``rx``.
 * ``KILL``:
   Increase ``ex`` by the value of the neighboring pixel's energy register, and
   then set the neighboring pixel's energy register to 0, if permitted.
 * ``SHARE``:
   Equalize ``ex`` and the neighboring pixel's energy register, if permitted.
 * ``FORK``:
-  Overwrite the neighboring pixel's instructions with ``mem``, if
+  Overwrite the neighboring pixel's instructions with ``memory``, if
   permitted.
+* ``TURN``:
+  Increment ``dx``.
 * ``HALT``:
   Stop execution.
 
@@ -97,7 +101,7 @@ cost of the instruction.  This decrease is referred to as a *penalty*.
 Execution
 ---------
 Execution begins at the first instruction after the logo, ``genome[1]``, with
-all registers reset, and ``mem`` overwritten with the value of ``HALT``.
+all registers reset, and ``memory`` overwritten with the value of ``HALT``.
 It proceeds until either a ``HALT`` instruction is reached, or ``ex`` equals 0
 (at which point the pixel is considered dead).
 
@@ -105,7 +109,7 @@ Mutation
 --------
 The simulator is not perfect; the *mutation rate* affects how often it makes
 mistakes.  These mistakes take a few forms: incorrect reads and writes to
-``mem`` and ``genome``, incorrect arithmetic (for instance, ``INCR`` may
+``memory`` and ``genome``, incorrect arithmetic (for instance, ``INCR`` may
 increment ``rx`` by 2 instead of just 0), and incorrect comparisons (a ``LOOP``
 instruction may treat ``rx`` as non-zero even when is equal to 0). In addition,
 registers and pointers may have their values randomly perturbed.

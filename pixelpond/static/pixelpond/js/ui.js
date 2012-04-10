@@ -6,14 +6,18 @@
     px.r = color.r;
     px.g = color.g;
     px.b = color.b;
+    px.a = _.isUndefined(color.a) ? 255 : color.a;
   };
   
+  //////////////////////////////////////////////////////////////////////////////
+  // Color schemes are simple functions from pixels to jCanvas colors.
+  //////////////////////////////////////////////////////////////////////////////
   PP.ColorSchemes = {
     
     // A simple scheme that colors viable pixels white, non-viable living pixels
     // grey, and non-living pixels black. 
     viable: function(pixel){
-      if(pixel.energy > 0){
+      if(pixel.isAlive()){
         if(pixel.generation >= PP.Settings.minimumViableGeneration){
           return WHITE;
         }
@@ -24,73 +28,94 @@
     
     // A scheme that colors pixels that share a common ancestor the same color.
     lineage: function(pixel){
-      return {
-        r: pixel.lineage.mod(256),
-        g: pixel.lineage.div(256).mod(256),
-        b: pixel.lineage.div(256 * 256).mod(256)
+      if(pixel.isAlive()){
+        return {
+          r: pixel.originatorId.mod(256),
+          g: pixel.originatorId.div(256).mod(256),
+          b: pixel.originatorId.div(256 * 256).mod(256)
+        }
       }
+      return BLACK;
     }
   };
   
+  //////////////////////////////////////////////////////////////////////////////
+  // Canvas.
+  //////////////////////////////////////////////////////////////////////////////
   PP.Canvas = Thoracic.Class.extend({
     initialize: function(options){
       _.bindAll(this,
-        'render'
+        'render',
+        'onRun_', 'onTerminate_'
       );
       
-      // Default options.
-      var defaultOptions = {
-        scale: 1,
+      options = _.extend({
+        scale: PP.Settings.defaultCanvasScale,
         colorScheme: 'lineage'
-      };
+      }, options);
       
-      this.options = _.extend({}, defaultOptions, options);
-      
-      if(!this.options.simulator){
-        throw new Error("no simulator specified");
+      this.simulator = options.simulator;
+      if(!this.simulator){
+        throw new Error('no simulator specified');
       }
       
-      this.width = this.options.simulator.width;
-      this.height = this.options.simulator.height;
+      this.scale = options.scale;
+      this.canvasWidth = this.simulator.pond.width * this.scale;
+      this.canvasHeight = this.simulator.pond.height * this.scale;
       
-      this.colorScheme = PP.UI.ColorScheme.get(this.options.colorScheme);
+      this.colorScheme = PP.ColorSchemes[options.colorScheme];
       if(!this.colorScheme){
-        throw new Error("invalid color scheme")
+        throw new Error('invalid color scheme')
       }
       
       // Create canvas.
-      this.$el = $('<canvas></canvas>');
+      this.$el = $(
+        '<canvas ' +
+        'width="' + this.canvasWidth + '" ' +
+        'height="' + this.canvasHeight + '" ' +
+        '></canvas>'
+      );
+      
+      
       this.$el.setPixels({
         x: 0,
         y: 0,
-        width: this.width * this.options.scale,
-        height: this.height * this.options.scale,
+        width: this.canvasWidth,
+        height: this.canvasHeight,
         each: function(px){
           setPixel(px, BLACK);
         }
       })
       
       // Connect events.
-      this.options.simulator.on('cycle', this.render);
-      this.options.simulator.on('terminate', this.onTerminate_);
+      this.simulator.on('era', this.render);
+      this.simulator.on('run', this.onRun_);
+      this.simulator.on('terminated', this.onTerminate_);
     },
     
-    render: function(pixel){
-      var color = this.colorScheme(pixel);
-      
-      this.$el.setPixels({
-        x: pixel.x * this.options.scale,
-        y: pixel.y * this.options.scale,
-        width: this.options.scale,
-        height: this.options.scale,
-        each: function(px){
-          setPixel(px, color);
-        }
-      });
+    render: function(){
+      this.simulator.forEach(function(pixel, location){
+        var color = this.colorScheme(pixel);
+        
+        // TODO: this could be vastly optimized!
+        this.$el.setPixels({
+          x: location.x * this.scale,
+          y: location.y * this.scale,
+          width: this.scale,
+          height: this.scale,
+          each: function(px){
+            setPixel(px, color);
+          }
+        });
+      }, this);
+    },
+    
+    onRun_: function(){
+      this.$el.addClass('running');
     },
     
     onTerminate_: function(){
-    
+      this.$el.removeClass('running');
     }
   });
   
