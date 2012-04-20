@@ -2,8 +2,9 @@ from pixelpond.tests import base
  
 class Output(cStringIO):
     def value(self):
-        return self.
-class TestCase(base.TestCase):
+        return str(self)
+
+class ManagementTest(base.BaseTest):
     def __init__(self, *args, **kwargs):
         super(TestCase, self).__init__(*args, **kwargs)
         
