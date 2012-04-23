@@ -1,6 +1,10 @@
-from django.db import models
+import inspect
+import new
 
-from pixelpond import settings, forms, validators
+from django.db import models
+from django.db.models import query
+
+from pixelpond import settings, forms, validators, instructions
 
 ################################################################################
 # Fields
@@ -19,13 +23,18 @@ class SouthCharFieldMixin(object):
         args, kwargs = introspector(self)
         return (self.field_class, args, kwargs)
 
-class GenomeField(models.CharField):
+class GenomeField(models.CharField, SouthCharFieldMixin):
     """
     A field that validates a genome.
     """
     default_validators = [validators.validate_genome]
     description = "A pixel's genome"
 
+    def __init__(self, *args, **kwargs):
+        kwargs['max_length'] = kwargs.get('max_length', settings.PIXELPOND_POND_DEPTH)
+        kwargs['default'] = instructions.NOP * kwargs['max_length']
+        return super(GenomeField, self).__init__(*args, **kwargs)
+    
     def formfield(self, **kwargs):
         defaults = {
             'form_class': forms.GenomeField,
@@ -33,7 +42,7 @@ class GenomeField(models.CharField):
         defaults.update(kwargs)
         return super(GenomeField, self).formfield(**defaults)
 
-class UUID4Field(models.CharField):
+class UUID4Field(models.CharField, SouthCharFieldMixin):
     """
     A field that validates UUID version 4.
     
@@ -47,9 +56,6 @@ class UUID4Field(models.CharField):
             kwargs.setdefault('editable', False)
         self.auto = auto
         super(UUID4Field, self).__init__(verbose_name, name, **kwargs)
-    
-    def get_internal_type(self):
-        return CharField.__name__
     
     def contribute_to_class(self, cls, name):
         if self.primary_key:
@@ -85,6 +91,62 @@ class UUID4Field(models.CharField):
         return super(UUID4Field, self).formfield(**defaults)
 
 ################################################################################
+# Managers and QuerySets
+################################################################################
+class ManagerQuerySet(query.QuerySet):
+    def as_manager(self, base=models.Manager):
+        """
+        Creates a manager from the current queryset by copying any methods not
+        defined in the queryset class's parent classes (which must be
+        `QuerySet` and `ManagerQuerySet`, and nothing else).
+        """
+        cls = self.__class__ # Nested class.
+        
+        class Manager(base):
+            use_for_related_fields = True
+            
+            def get_query_set(self):
+                return cls(self.model)
+        
+        base_classes = [ManagerQuerySet, QuerySet]
+        base_methods = [inspect.getmembers(base, inspect.ismethod) for base in base_classes]
+        
+        def in_base_class(method_name):
+            for methods in base_methods:
+                for (name, _) in methods:
+                    if name == method_name:
+                        return True
+            return False
+        
+        for (method_name, method) in inspect.getmembers(self, inspect.ismethod):
+             if not in_base_class(method_name):
+                 new_method = new.instancemethod(method.im_func, None, Manager)
+                 setattr(Manager, method_name, new_method)
+    
+        return Manager()
+
+class QuerySet(ManagerQuerySet):
+    def get_or_none(self, **kwargs):
+        """
+        Wraps `QuerySet.get`, returning `None` instead of raising when
+        the object doesn't exist.
+        """
+        try:
+            return self.get(**kwargs)
+        except self.model.DoesNotExist:
+            return None
+
+    def first(self, **kwargs):
+        """
+        Wraps `QuerySet.filter`, returning just the first matching object,
+        or `None` if no objects match.
+        """
+        try:
+            return self.filter(**kwargs)[0]
+        except IndexError:
+            return None
+ 
+################################################################################
 # Models
 ################################################################################
 class PositionMixin(models.Model):
@@ -97,47 +159,75 @@ class PositionMixin(models.Model):
     class Meta:
         abstract = True
 
+
 class Pond(models.Model):
     """
-    A ``Pond`` is composed of a number of ``Puddle``s arrayed in a 2D grid.
+    A `Pond` is composed of a number of `Puddle`s arrayed in a 2D grid.
     """
-    shortname = models.CharField()
+    shortname = models.CharField(max_length=64)
     
-    width = models.PositiveIntegerField(help_text='the width of the pond')
-    height = models.PositiveIntegerField(help_text='the height of the pond')
-    max_depth = models.PositiveIntegerField(
-        max_value=settings.PIXELPOND_MAX_DEPTH,
-        help_text='the maximum depth of the pond'
+    width = models.PositiveIntegerField(
+        help_text='the width of the pond',
+        default=settings.PIXELPOND_DEFAULT_POND_WIDTH,
+    )
+    
+    height = models.PositiveIntegerField(
+        help_text='the height of the pond',
+        default=settings.PIXELPOND_DEFAULT_POND_HEIGHT,
+    )
+    
+    puddle_size = models.PositiveIntegerField(
+        help_text='the size of a (square) puddle',
+        default=settings.PIXELPOND_DEFAULT_PUDDLE_SIZE,
     )
     
     def __unicode__(self):
         return '%s (%i x %i)' % (self.shortname, self.width, self.height)
     
+    objects = QuerySet().as_manager()
+
 class Puddle(PositionMixin):
     """
-    A ``Puddle`` is owned by a ``Pond``, and is composed of a number of
-    ``Pixel``s arrayed in a 2D grid.
+    A `Puddle` is owned by a `Pond`, and is composed of a number of `Pixel`s
+    arrayed in a 2D grid.
     """
     pond = models.ForeignKey(Pond, related_name='puddles')
     
     def __unicode__(self):
         return '%s at (%i, %i)' % (self.pond, self.x, self.y)
     
+    objects = QuerySet().as_manager()
+
 class Pixel(PositionMixin):
     """
-    A ``Pixel`` is owned by a ``Pond``, and is composed of a genome
+    A `Pixel` is owned by a `Puddle`, and is composed of a genome and various
+    heredity information and statistics.
     """
     puddle = models.ForeignKey(Puddle, related_name='pixels')
-    genome = fields.GenomeField(max_length=settings.PIXELPOND_MAX_DEPTH)
-    uuid = fields.CharField(max_length)
-    parent_uuid = fields.Char
+    genome = GenomeField(max_length=settings.PIXELPOND_POND_DEPTH)
+    uuid = UUID4Field()
+    parent_uuid = UUID4Field()
     
     def __unicode__(self):
-        return '%s : (%i, %i) : %s'
+        return '%s : (%i, %i) : %s' % (self.puddle, self.x, self.y, self.genome)
+
+    objects = QuerySet().as_manager()
+
+class LockQuerySet(QuerySet):
+    def create_exclusive(self, pond):
+        # First find an unlocked puddle.
+        puddle = pond.puddles.get_or_none(is_exclusive_write_locked=False)
+        if not puddle:
+            raise LockError()
+        
+        # Lock the puddle exclusively.
+        lock = self.create(puddle=puddle, type=Lock.EXCLUSIVE_WRITE_TYPE)
+        
+        return lock, puddles
 
 class Lock(models.Model):
     """
-    A ``Lock`` represents a client's
+    A `Lock` represents a client's
     """
     
     NON_EXCLUSIVE_WRITE_TYPE = 10
@@ -148,6 +238,10 @@ class Lock(models.Model):
         (EXCLUSIVE_WRITE_TYPE, 'Exclusive Write'),
     ]
     
-    key = models.CharField()
-    type = models.CharField(choices=TYPE_CHOICES)
-    date = models.DateTimeField()
+    key = UUID4Field()
+    type = models.IntegerField(choices=TYPE_CHOICES, default=EXCLUSIVE_WRITE_TYPE)
+    created = models.DateTimeField(auto_now_add=True)
+
+    puddle = models.ForeignKey(Puddle, related_name='locks')
+
+    objects = LockQuerySet().as_manager()

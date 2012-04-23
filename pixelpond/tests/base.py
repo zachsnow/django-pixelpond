@@ -19,3 +19,6 @@ class BaseTest(unittest.TestCase):
 
     def assertNotIsInstance(self, obj, cls, msg=None):
         self.assertFalse(isinstance(obj, cls), msg=msg)
+
+    def assertDoesNotRaise(self, f):
+        f()

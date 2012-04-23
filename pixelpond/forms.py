@@ -5,6 +5,9 @@ from django.forms.fields import CharField
 # Fields
 ################################################################################
 class GenomeField(CharField):
+    """
+    A form field for genomes.
+    """
     default_error_messages = {
         'invalid': 'enter a valid genome'
     }
@@ -15,6 +18,9 @@ class GenomeField(CharField):
         return super(GenomeField, self).clean(value)
 
 class UUID4Field(CharField):
+    """
+    A form field for type 4 UUIDs.
+    """
     default_error_messages = {
         'invalid': 'enter a valid type 4 UUID'
     }
