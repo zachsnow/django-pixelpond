@@ -1,10 +1,19 @@
 from django.db.models.signals import pre_save, post_save, pre_delete, post_delete
 from django.core.signals import request_started, request_finished
-from django.dispatch import receiver
+from django.dispatch import receiver, Signal
 
 from pixelpond import settings
 from pixelpond.models import Pond, Puddle, Lock
 
+################################################################################
+# Custom signals.
+################################################################################
+pre_unlock = Signal(providing_args=['instance'])
+post_unlock = Signal(providing_args=['instance'])
+
+################################################################################
+# Signal handlers.
+################################################################################
 @receiver(post_save, sender=Pond)
 def pond_post_save(sender, instance, created, **kwargs):
     if created:
@@ -61,10 +70,16 @@ def lock_post_create(sender, instance, **kwargs):
                 key=lock.key
             )
 
-@receiver(post_delete, sender=Lock)
-def lock_post_delete(sender, instance, **kwargs):
+@receiver(post_unlock, sender=Lock)
+def lock_post_unlock(sender, instance, **kwargs):
+    """
+    Exclusive locks can always be unlocked; non-exclusive ones can only
+    be unlocked if there's not an outstanding exclusive lock on the same puddle.
+    This invariant is not considered here, however; see `LockManager.unlock`.
+        
+    Whenever a lock is unlocked all other outstanding locks on the locked puddle
+    are deleted. 
+    """
     lock = instance
     
-    # Destroy the non-exclusive locks on this puddle.
-    lock.puddle.locks.filter(type=Lock.NON_EXCLUSIVE_WRITE_TYPE).delete()
-
+    lock.puddle.locks.delete()

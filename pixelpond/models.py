@@ -91,7 +91,7 @@ class UUID4Field(models.CharField, SouthCharFieldMixin):
         return super(UUID4Field, self).formfield(**defaults)
 
 ################################################################################
-# Managers and QuerySets
+# Managers and QuerySet base classes.
 ################################################################################
 class ManagerQuerySet(query.QuerySet):
     """
@@ -289,6 +289,12 @@ class Pixel(PositionMixin):
 
     objects = QuerySet().as_manager()
 
+class LockError(Exception):
+    """
+    Raised when a locking invariant is violated.
+    """
+    pass
+
 class LockQuerySet(QuerySet):
     def create_exclusive(self, pond):
         # First find an unlocked puddle.
@@ -321,6 +327,16 @@ class Lock(models.Model):
     puddle = models.ForeignKey(Puddle, related_name='locks')
 
     objects = LockQuerySet().as_manager()
+    
+    def unlock(self):
+        from pixelpond.signals import post_unlock
+        
+        if self.type == Lock.NON_EXCLUSIVE_WRITE_TYPE and self.puddle.is_exclusive_write_locked:
+            raise LockError('attempting to unlock a non-exclusive write lock on a locked puddle')
+        
+        self.delete()
+        
+        post_unlock.send(sender=Lock, instance=self)
 
 # Connect signals.
 import pixelpond.signals

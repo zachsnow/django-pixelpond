@@ -41,7 +41,7 @@ class QuerySetTest(BaseTest):
         self.get_or_none_cases(lambda: Pixel.objects.all(), 'queryset')
 
 class PuddleTest(BaseTest):
-    def assertPositions(self, puddles, expected):
+    def assertPositions(self, puddles, expected, msg=None):
         actual = [(p.x, p.y) for p in puddles]
         result = True
         
@@ -50,11 +50,12 @@ class PuddleTest(BaseTest):
             result = result and (position in expected)
         for position in expected:
             result = result and (position in actual)
-        self.assertTrue(result)
+        self.assertTrue(result, '%s (expected and actual should contain the same positions)' % msg)
         
-        self.assertEquals(len(expected), len(actual))
-        self.assertEquals(len(expected), len(set(expected)))
-        self.assertEquals(len(actual), len(set(actual)))
+        # No duplicates.
+        self.assertEquals(len(expected), len(actual), 'expected and actual should have the same length (%s)' % msg)
+        self.assertEquals(len(expected), len(set(expected)), 'expected positions should have no duplicates (%s)' % msg)
+        self.assertEquals(len(actual), len(set(actual)), 'actual positions should have no duplicates (%s)' % msg)
         
     def test_neighborhood(self):
         pond = Pond.objects.create(shortname='test_neighborhood')
@@ -71,7 +72,7 @@ class PuddleTest(BaseTest):
             (1, 0),
             (1, 1),
         ]
-        self.assertPositions(puddle.neighborhood, expected)
+        self.assertPositions(puddle.neighborhood, expected, 'x and y edge')
         
         puddle = pond.puddles.get(x=0, y=1)
         expected = [
@@ -85,7 +86,7 @@ class PuddleTest(BaseTest):
             (1, 1),
             (1, 2),
         ]
-        self.assertPositions(puddle.neighborhood, expected)
+        self.assertPositions(puddle.neighborhood, expected, 'x edge')
         
         puddle = pond.puddles.get(x=0, y=1)
         expected = [
@@ -99,7 +100,7 @@ class PuddleTest(BaseTest):
             (1, 1),
             (1, 2),
         ]
-        self.assertPositions(puddle.neighborhood, expected)
+        self.assertPositions(puddle.neighborhood, expected, 'y edge')
         
         puddle = pond.puddles.get(x=2, y=2)
         expected = [
@@ -113,6 +114,4 @@ class PuddleTest(BaseTest):
             (3, 2),
             (3, 3),
         ]
-        self.assertPositions(puddle.neighborhood, expected)
-
-        
+        self.assertPositions(puddle.neighborhood, expected, 'no edge')
