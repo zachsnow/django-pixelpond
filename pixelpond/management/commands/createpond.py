@@ -1,34 +1,51 @@
-from pondlife.management.base import BaseCommand
-from pondlife.management.base import in_range
-
-from optparse import make_option
+from pixelpond import settings
+from pixelpond.management.base import BaseCommand, CommandError
+from pixelpond.models import Pond
 
 class Command(BaseCommand):
-    args = """<shortname> [width] [height] [depth]"""
-    help = """Creates a new pond with the given name, width, height, and depth.""" 
+    args = """<shortname> [width] [height] [puddle size]"""
+    help = """Creates a new pond with the given shortname, width, height, and puddle size.""" 
     
-    def handle(self, shortname,
-        width=settings.PIXELPOND_DEFAULT_WIDTH,
-        height=settings.PIXELPOND_DEFAULT_HEIGHT,
-        depth=settings.PIXELPOND_DEFAULT_DEPTH
-    ):
-        if Pond.objects.filter(shortname=shortname).exists():
-            raise CommandError('pond %s already exists' % shortname)
+    def respond(self, shortname, width=None, height=None, puddle_size=None):
+        pond = Pond.objects.get_or_none(shortname=shortname)
+        if pond:
+            raise CommandError('pond %s already exists' % pond)
         
-        width = self.int(width, 'width')
-        height = self.int(height, 'height')
-        depth = self.int(depth, 'depth')
+        kwargs = {
+            'shortname': shortname
+        }
         
-        self.in_range(width, 0, settings.PIXELPOND_MAX_WIDTH, 'width')
-        self.in_range(width, 0, settings.PIXELPOND_MAX_HEIGHT, 'height')
-        self.in_range(width, 0, settings.PIXELPOND_MAX_DEPTH, 'depth')
-        
-        if not self.dry_run:
-            pond = Pond.objects.create(
-                shortname=shortname,
-                width=width,
-                height=height,
-                depth=depth
+        if width is not None:
+            width = self.int(width, 'width')
+            self.in_range(
+                width,
+                settings.PIXELPOND_MIN_POND_WIDTH,
+                settings.PIXELPOND_MAX_POND_WIDTH,
+                'width'
             )
+            kwargs['width'] = width
+        
+        if height is not None:
+            height = self.int(height, 'height')
+            self.in_range(
+                height,
+                settings.PIXELPOND_MIN_POND_HEIGHT,
+                settings.PIXELPOND_MAX_POND_HEIGHT,
+                'height'
+            )
+            kwargs['height'] = height
 
-        self.stdout.write('created pond %s' % pond)
+        if puddle_size is not None:
+            puddle_size = self.int(puddle_size, 'puddle size')
+            self.in_range(
+                puddle_size,
+                settings.PIXELPOND_MIN_PUDDLE_SIZE,
+                settings.PIXELPOND_MAX_PUDDLE_SIZE,
+                'puddle size'
+            )
+            kwargs['puddle_size'] = puddle_size
+            
+        if not self.dry_run:
+            pond = Pond.objects.create(**kwargs)
+
+        self.stdout.write('pond %s created' % pond)

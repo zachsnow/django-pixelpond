@@ -4,21 +4,16 @@ from pixelpond.tests.base import BaseTest
 
 class PondTest(BaseTest):
     def test_pond_creation(self):
-        pond = Pond()
-        self.assertEquals(pond.width, settings.PIXELPOND_DEFAULT_POND_WIDTH)
-        
-        pond.save()
+        pond = Pond.objects.create()
         
         puddles = pond.puddles.all()
+        pixels = puddles.first().pixels.all()
         
-        self.assertEquals(len(puddles), pond.width * pond.height)
-
-class PuddleTest(BaseTest):
-    def test_puddle_creation(self):
-        pond = Pond()
-        pond.save()
-        
-        puddle = pond.puddles.all().first()
-        pixels = puddle.pixels.all()
-        
-        self.assertEquals(len(pixels), pond.width * pond.height)
+        self.assertEquals(
+            len(puddles),
+            settings.PIXELPOND_DEFAULT_POND_WIDTH * settings.PIXELPOND_DEFAULT_POND_HEIGHT
+        )
+        self.assertEquals(
+            len(pixels),
+            settings.PIXELPOND_DEFAULT_PUDDLE_SIZE ** 2
+        )
