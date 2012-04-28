@@ -115,3 +115,14 @@ class PuddleTest(BaseTest):
             (3, 3),
         ]
         self.assertPositions(puddle.neighborhood, expected, 'no edge')
+        
+class LockTest(BaseTest):
+    def test_lock(self):
+        pass
+    
+    def test_unlock_exclusive(self):
+        pass
+
+    def test_unlock_non_exclusive(self):
+        pass
+    

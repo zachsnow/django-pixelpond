@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseServiceUnavailable
 from django.views.generic import View, TemplateView
 
 class HttpResponseServiceUnavailable(HttpResponse):
@@ -58,12 +58,13 @@ def APIView(View, JSONResponseMixin):
         if not lock:
             return HttpResponseBadRequest()
         
-        
         for puddle_json in data['puddles']:
-             puddle = Puddle.objects.get_or_none(puddle['id'])
-             if not puddle:
-                 return HttpResponseBadRequest()
-             puddles.append(puddle)
-        
-        
-        Lock.objects.unlock(lock, puddles)
+            puddle = Puddle.objects.get_or_none(puddle['id'])
+            puddle.pixels_json = puddle['pixels']
+            if not puddle:
+                return HttpResponseBadRequest()
+                puddles.append(puddle)
+
+        unlocked_puddles = Lock.objects.unlock(lock, puddles)
+        for puddle in unlocked_puddles:
+            for pixel in pudde.pixels_json

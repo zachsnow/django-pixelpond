@@ -11,9 +11,11 @@ class PondTest(BaseTest):
         
         self.assertEquals(
             len(puddles),
-            settings.PIXELPOND_DEFAULT_POND_WIDTH * settings.PIXELPOND_DEFAULT_POND_HEIGHT
+            settings.PIXELPOND_DEFAULT_POND_WIDTH * settings.PIXELPOND_DEFAULT_POND_HEIGHT,
+            'creating a pond creates all owned puddles',
         )
         self.assertEquals(
             len(pixels),
-            settings.PIXELPOND_DEFAULT_PUDDLE_SIZE ** 2
+            settings.PIXELPOND_DEFAULT_PUDDLE_SIZE ** 2,
+            'creating a pond adds the correct number of pixels to each puddle',
         )

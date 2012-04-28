@@ -1,11 +1,13 @@
 import inspect
 import new
 import uuid
+from datetime import datetime
 
 from django.db import models
 from django.db.models import query, Q
 
 from pixelpond import settings, forms, validators, instructions
+from pixelpond.decorators import classproperty
 
 ################################################################################
 # Fields
@@ -307,6 +309,9 @@ class LockQuerySet(QuerySet):
         
         return lock, puddles
 
+    def expired(self):
+        return self.filter(created__lt=Lock.expiration)
+    
 class Lock(models.Model):
     """
     A `Lock` represents a client's
@@ -328,15 +333,31 @@ class Lock(models.Model):
 
     objects = LockQuerySet().as_manager()
     
-    def unlock(self):
+    def unlock(self, key):
+        """
+        Unlocks the lock
+        """
+        if self.key != key:
+            raise LockError('attempting to unlock a lock with the wrong key')
+        
         from pixelpond.signals import post_unlock
         
         if self.type == Lock.NON_EXCLUSIVE_WRITE_TYPE and self.puddle.is_exclusive_write_locked:
             raise LockError('attempting to unlock a non-exclusive write lock on a locked puddle')
         
+        if self.is_expired():
+            raise LockError('attempting to unlock an expired lock')
+        
         self.delete()
         
         post_unlock.send(sender=Lock, instance=self)
 
+    @classproperty
+    def expiration(cls):
+        return datetime.now() - settings.PIXELPOND_LOCK_LIFETIME
+    
+    def is_expired(self):
+        return self.created >= Lock.expiration
+ 
 # Connect signals.
 import pixelpond.signals
