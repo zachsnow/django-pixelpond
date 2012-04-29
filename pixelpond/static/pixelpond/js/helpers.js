@@ -1,10 +1,4 @@
 (function(PP){
-  PP.trim = function(s){
-    s = s.replace(/^\s+/, '');
-    s = s.replace(/\s+$/, '');
-    return s;
-  };
-  
   PP.clamp = function(i, max){
     i %= max;
     i += max;
@@ -69,7 +63,7 @@
     };
   };
   
-  PP.randomId = function(){
+  PP.randomUUID = function(){
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       var r = (PP.random() * 16) | 0, v = c == 'x' ? r : (r&0x3|0x8);
       return v.toString(16);

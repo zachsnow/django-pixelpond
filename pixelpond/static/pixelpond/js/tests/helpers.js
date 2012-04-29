@@ -11,9 +11,4 @@
     equal(1, PP.clamp(101, 100), 'wrap past uppser endpoint');
   });
   
-  test('trim', function(){
-    equal('Hi!', PP.trim('   \t\n  Hi! \n\n '), 'trim all whitespace');
-  });
-  
-  
 })(PixelPond);

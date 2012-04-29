@@ -57,7 +57,7 @@
   // Parse a single instruction, returning ``undefined`` if the instruction
   // is invalid.
   PP.Instructions.parse = function(s){
-    s = PP.trim(s);
+    s = $.trim(s);
     s = s.toUpperCase();
     return PP.Instructions[s];
   };
@@ -116,7 +116,7 @@
   PP.Genome.parse = function(s){
     var lines = s.split('\n');
     return _.map(lines, function(s){
-      s = PP.trim(s).toUpperCase();
+      s = $.trim(s).toUpperCase();
       
       // Comments. 
       if(s[0] == '#'){
@@ -155,7 +155,6 @@
         options = _.extend({
           depth: PP.Settings.defaultPondDepth 
         });
-        this.depth = options.depth;
         
         this.id = null;
         this.parentId = null;
@@ -165,7 +164,9 @@
         
         this.genome = [];
         this.memory = [];
+        this.depth = options.depth;
         this.genome.length = this.memory.length = this.depth;
+        
         this.clear();
       }
     },
@@ -178,6 +179,8 @@
       this.generation = PP.Long.fromString(data.generation);
       
       this.genome = PP.Genome.parse(data.genome);
+      this.memory = [];
+      this.depth = this.memory.length = this.genome.length;
     },
     
     serialize: function(){

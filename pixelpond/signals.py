@@ -63,7 +63,7 @@ def lock_post_create(sender, instance, **kwargs):
         lock.puddle.save()
 
         # Create non-exclusive locks on neighboring puddles.
-        for p in lock.puddle.neighborhood.filter(is_exclusive_write_locked=False):
+        for p in lock.puddle.neighborhood.exclude(pk=lock.puddle.pk):
             Lock.objects.create(
                 puddle=p,
                 type=Lock.NON_EXCLUSIVE_WRITE_TYPE,
@@ -82,4 +82,4 @@ def lock_post_unlock(sender, instance, **kwargs):
     """
     lock = instance
     
-    lock.puddle.locks.delete()
+    lock.puddle.locks.all().delete()

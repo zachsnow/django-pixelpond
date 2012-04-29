@@ -100,7 +100,6 @@ class ManagerQuerySet(query.QuerySet):
     A base class for querysets that support being converted to managers
     (for use as a model's `objects` manager) via `ManagerQuerySet.as_manager`.
     """
-    
     def as_manager(self, base=models.Manager):
         """
         Creates a manager from the current queryset by copying any methods not
@@ -126,11 +125,21 @@ class ManagerQuerySet(query.QuerySet):
             return False
         
         for (method_name, method) in inspect.getmembers(self, inspect.ismethod):
-             if not in_base_class(method_name):
-                 new_method = new.instancemethod(method.im_func, None, QuerySetManager)
-                 setattr(QuerySetManager, method_name, new_method)
+            if not in_base_class(method_name) and not getattr(method, '_queryset_only', None):
+                new_method = new.instancemethod(method.im_func, None, QuerySetManager)
+                setattr(QuerySetManager, method_name, new_method)
     
         return QuerySetManager()
+
+    @staticmethod
+    def manager_only(f):
+        setattr(f, '_manager_only', True)
+        return f
+    
+    @staticmethod
+    def queryset_only(f):
+        setattr(f, '_queryset_only', True)
+        return f
 
 class QuerySet(ManagerQuerySet):
     """
@@ -169,6 +178,15 @@ class PositionMixin(models.Model):
     x = models.PositiveIntegerField()
     y = models.PositiveIntegerField()
 
+    @property
+    def position(self):
+        return (self.x, self.y)
+    
+    @position.setter
+    def position(self, pos):
+        self.x = pos[0]
+        self.y = pos[1]
+    
     class Meta:
         abstract = True
 
@@ -298,17 +316,23 @@ class LockError(Exception):
     pass
 
 class LockQuerySet(QuerySet):
-    def create_exclusive(self, pond):
+    @ManagerQuerySet.manager_only
+    def create_exclusive(self, pond, **kwargs):
         # First find an unlocked puddle.
-        puddle = pond.puddles.get_or_none(is_exclusive_write_locked=False)
+        puddle = pond.puddles.first(is_exclusive_write_locked=False, **kwargs)
         if not puddle:
-            raise LockError()
+            raise LockError('no unlocked puddles')
         
         # Lock the puddle exclusively.
         lock = self.create(puddle=puddle, type=Lock.EXCLUSIVE_WRITE_TYPE)
-        
-        return lock, puddles
-
+        return lock
+    
+    def exclusive(self):
+        return self.filter(type=Lock.EXCLUSIVE_WRITE_TYPE)
+    
+    def non_exclusive(self):
+        return self.filter(type=Lock.NON_EXCLUSIVE_WRITE_TYPE)
+    
     def expired(self):
         return self.filter(created__lt=Lock.expiration)
     
@@ -335,12 +359,10 @@ class Lock(models.Model):
     
     def unlock(self, key):
         """
-        Unlocks the lock
+        Unlocks the lock.
         """
         if self.key != key:
             raise LockError('attempting to unlock a lock with the wrong key')
-        
-        from pixelpond.signals import post_unlock
         
         if self.type == Lock.NON_EXCLUSIVE_WRITE_TYPE and self.puddle.is_exclusive_write_locked:
             raise LockError('attempting to unlock a non-exclusive write lock on a locked puddle')
@@ -350,6 +372,7 @@ class Lock(models.Model):
         
         self.delete()
         
+        from pixelpond.signals import post_unlock
         post_unlock.send(sender=Lock, instance=self)
 
     @classproperty
@@ -357,7 +380,7 @@ class Lock(models.Model):
         return datetime.now() - settings.PIXELPOND_LOCK_LIFETIME
     
     def is_expired(self):
-        return self.created >= Lock.expiration
+        return self.created < Lock.expiration
  
 # Connect signals.
 import pixelpond.signals
