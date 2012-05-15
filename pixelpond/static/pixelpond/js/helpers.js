@@ -32,6 +32,15 @@
     });
   };
   
+  PP.tryInvoke = function(){
+    var f = _.first(arguments);
+    var args = _.rest(arguments);
+    if(_.isFunction(f)){
+      return f.apply(_.first(args), _.rest(args));
+    }
+    return f;
+  };
+  
   //////////////////////////////////////////////////////////////////////////////
   // Random
   //////////////////////////////////////////////////////////////////////////////
@@ -68,7 +77,28 @@
       var r = (PP.random() * 16) | 0, v = c == 'x' ? r : (r&0x3|0x8);
       return v.toString(16);
     });
-
+  };
+  
+  PP.randomInstruction = function(){
+    return PP.randomInt(PP.Instructions.INSTRUCTION_NAMES.length);
+  };
+  
+  //////////////////////////////////////////////////////////////////////////////
+  // Arrays
+  //////////////////////////////////////////////////////////////////////////////
+  PP.list = function(count, value, context){
+    var l = [];
+    if(_.isFunction(value)){
+      for(var i = 0; i < count; i++){
+        l[i] = value.call(context, i);
+      };
+    }
+    else {
+      for(var i = 0; i < count; i++){
+        l[i] = value;
+      }
+    }
+    return l;
   };
   
   //////////////////////////////////////////////////////////////////////////////
@@ -78,8 +108,8 @@
   // responsive through PixelPond.delay, we can specify the timeout used and
   // thereby adjust the 'niceness'. 
   //////////////////////////////////////////////////////////////////////////////
-  
   var niceness = 0;
+  
   PP.nice = function(n){
     if(n < 0){
       n = 0;
