@@ -22,31 +22,26 @@
       var PP = PixelPond;
       var demo = function(){
         var pond = new PP.Pond({
-          width: 128,
-          height: 128
+          width: 32,
+          height: 32
         });
         
         var simulator = new PP.Simulator({
           pond: pond,
-          cyclesPerEra: 64
+          cyclesPerEra: 100
         });
         
         var canvas = new PP.Canvas({
           simulator: simulator
         });
         
+        simulator.on('era', function(options){
+          $('#info').text('Era ' + options.era);
+        });
+        
         $('#pond').append(canvas.$el);
         
-        simulator.run(32);
-      };
-      
-      var test = function(){
-        PP.nice(1000);
-        PP.delay(alert, null, 'Hi!');
-        
-        if('Hi!' !== PP.trim('    Hi!   \n')){
-          throw new Error('trim is broken');
-        }
+        simulator.run(1024);
       };
       
       $(demo);
@@ -70,6 +65,13 @@
       #pond canvas.running {
         border: 2px solid #00ff00;
       }
+      
+      #description {
+        float: right;
+        width: 300px;
+        padding: 0;
+        margin: 0;
+      }
     </style>
   </head>
   
@@ -78,13 +80,14 @@
       <h1>abiogenesis demo</h1>
       <h2>django-pixelpond</h2>
       
-      <div id="pond"></div>
-      
-      <p>
+      <p id="description">
         This demo initializes an empty pond and then runs it. Due to random
         perturbations eventually viable pixels are produced and proceed to
         replicate.  This is referred to as <i>abiogenesis</i>.
       </p>
+      
+      <div id="pond"></div>
+      <p id="info"></p>
     </div>
   </body>
 </html>
