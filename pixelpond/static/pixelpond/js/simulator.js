@@ -51,6 +51,7 @@
   PP.Instructions.CODE_INDEX = 1;
   
   PP.Instructions.INSTRUCTION_NAMES = [
+    'HALT',
     'NOP',
     'ZERO',
     'FWD',
@@ -70,8 +71,7 @@
     'FORK',
     'TURN',
     'LOOP',
-    'REP',
-    'HALT'
+    'REP'
   ];
   _.forEach(PP.Instructions.INSTRUCTION_NAMES, function(instruction, index){
     PP.Instructions[instruction] = index;
@@ -126,6 +126,7 @@
         return 1;
       
       
+      case PP.Instructions.SENSE:
       case PP.Instructions.POST:
       case PP.Instructions.RECV:
       case PP.Instructions.KILL:
@@ -222,7 +223,7 @@
       
       this.genome = PP.Genome.parse(data.genome);
       this.depth = this.genome.length;
-      this.memory = PP.list(this.depth, PP.Instructions.NOP);
+      this.memory = PP.list(this.depth, PP.Instructions.HALT);
     },
     
     serialize: function(){
@@ -248,24 +249,43 @@
       this.ip = 0;
       
       _.forEach(this.memory, function(instruction, i){
-        this.memory[i] = PP.Instructions.NOP;
+        this.memory[i] = PP.Instructions.HALT;
       }, this);
     },
     
     clear: function(){
       this.reset();
       
-      _.forEach(this.genome, function(instruction, i){
-        this.genome[i] = PP.Instructions.NOP;
-      }, this);
+      this.genome[PP.Instructions.LOGO_INDEX] = PP.Instructions.HALT;
+      this.genome[PP.Instructions.CODE_INDEX] = PP.Instructions.HALT;
     },
     
     randomize: function(){
       this.reset();
       
+      this.id = this.parentId = this.originatorId = PP.zeroUUID();
+      this.generation = PP.Long.ZERO;
+      
       _.forEach(this.genome, function(instruction, i){
         this.genome[i] = PP.randomInstruction();
       }, this);
+    },
+    
+    kill: function(){
+      this.reset();
+      
+      this.id = this.parentId = this.originatorId = PP.zeroUUID();
+      this.generation = PP.Long.ZERO;
+      
+      this.genome[PP.Instructions.LOGO_INDEX] = PP.Instructions.HALT;
+      this.genome[PP.Instructions.CODE_INDEX] = PP.Instructions.HALT;
+    },
+    
+    copyTo: function(pixel){
+      pixel.id = PP.randomUUID();
+      pixel.parentId = this.id;
+      pixel.originatorId = this.originatorId;
+      pixel.generation = this.generation.add(PP.Long.ONE);
     },
     
     isAlive: function(){
@@ -371,7 +391,7 @@
   PP.Operators.Inflow = Thoracic.Class.extend({
     initialize: function(options){
       this.options = _.extend({
-        frequency: 1000,
+        frequency: 500,
         value: 4000,
         variation: 8000
       });
@@ -410,8 +430,7 @@
       this.pond = options.pond;
       
       this.options = _.extend({
-        cyclesPerEra: 1000,
-        operationsPerCycle: 1000,
+        cyclesPerEra: 100,
         defaultEraCount: this.pond.width * this.pond.height,
         
         // TODO: should these live in the pond? Probably.
@@ -479,7 +498,7 @@
       var count = 0;
       var pixel = this.at(location);
       
-      while(pixel.ex >= 0 && !stop && count < this.options.operationsPerCycle){
+      while(pixel.ex >= 0 && !stop){
         count += 1;
         
         var instruction = pixel.genome[pixel.ip];
@@ -556,7 +575,7 @@
             var neighbor = this.neighborOf_(location, pixel, PP.Interactions.NEGATIVE);
             if(neighbor){
               pixel.ex += neighbor.ex;
-              this.kill_(neighbor);
+              neighbor.kill();
             }
             else {
               this.penalize_(pixel);
@@ -577,7 +596,7 @@
           case PP.Instructions.FORK:
             var neighbor = this.neighborOf_(location, pixel, PP.Interactions.NEGATIVE);
             if(neighbor){
-              // TODO: copy pixel over.
+              pixel.copyTo(neighbor);
             }
             else {
               this.penalize_(pixel);
@@ -609,10 +628,11 @@
         }
       }
       
-      if(pixel.ex == 0){
-        this.kill_(pixel);
+      if(pixel.ex <= 0){
+        pixel.kill();
       }
-      this.trigger('cycle', pixel);
+      
+      // this.trigger('cycle', pixel);
     },
     
     penalize_: function(pixel){
