@@ -1,9 +1,8 @@
-================================================================================
 django-pixelpond
-================================================================================
---------------------------------------------------------------------------------
-A Django application to grow artificial life in your browser
---------------------------------------------------------------------------------
+================
+
+`django-pixelpond` is a Django application to grow artificial life in your
+browser.
 
 A demo built on the development version of this project can be seen at
 http://pixelpond.zachsnow.com/
@@ -19,6 +18,10 @@ In order to pull off the *distributed* part a single large artificial life
 environment (a *pond*) is maintained by a centralized server.  Clients request
 portions of that environment and simulate them for a period of time, and then
 reflect the updated environment back to the server.
+
+In order to get *really* distributed, clients can communicate with several
+different central servers at once, allowing organisms from one server to
+"migrate" to another.
 
 Client
 ======
