@@ -4,7 +4,7 @@ Server
 The django-pixelpond server is 
 
 For more information about how the actual pond and pixels are represented in
-the database, see ``docs/database.rst``.
+the database, see `docs/database.md`.
 
 Access Control
 --------------
@@ -17,7 +17,7 @@ of time it returns its result to the server, which updates the pond.
 
 In order to ensure that different parts of the pond can interact, the portions
 of the pond that are returned to the server overlap.  Specifically, when a
-client requests a portion of the pond, several neighboring ``Puddle``s are
-returned.  A later request might return some of those ``Puddle``s, and others
+client requests a portion of the pond, several neighboring `Puddle`s are
+returned as well.  A later request might return some of those `Puddle`s, and others
 that were not previously returned.
- 
+
