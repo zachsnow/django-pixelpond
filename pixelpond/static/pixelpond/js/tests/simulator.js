@@ -31,11 +31,11 @@ $(function(){
     equal(pixel.genome.length, depth, 'the genome should have the right length');
     equal(pixel.memory.length, depth, 'the memory should have the right length');
     
-    PP.eachEqual(pixel.genome, PP.Instructions.NOP, 'the genome should be initialized to NOP (0)');
-    PP.eachEqual(pixel.memory, PP.Instructions.NOP, 'the memory should be initialized to NOP (0)');
+    PP.Test.eachEqual(pixel.genome, PP.Instructions.HALT, 'the genome should be initialized to HALT (0)');
+    PP.Test.eachEqual(pixel.memory, PP.Instructions.HALT, 'the memory should be initialized to HALT (0)');
   });
   
-  test('pixel data initialization', function(){
+  test('pixel deserialization', function(){
     var data = {
       id: PP.randomUUID(),
       parentId: PP.randomUUID(),
@@ -47,6 +47,15 @@ $(function(){
     var pixel = new PP.Pixel({
       data: data
     });
+    
+    equal(pixel.id, data.id, 'the pixel should have the right id');
+    equal(pixel.parentId, data.parentId, 'the pixel should have the right parent id');
+    equal(pixel.originatorId, data.originatorId, 'the pixel should have the right originator id');
+    equal(pixel.generation.toString(), data.generation, 'the pixel should have the right generation');
+    
+    equal(pixel.depth, 10, 'the pixel should have the right depth');
+    equal(pixel.genome.length, 10, 'the genome should have the right length');
+    equal(pixel.memory.length, 10, 'the memory should have the right length');
     
     var expectedGenome = [
       PP.Instructions.IN,
@@ -60,17 +69,41 @@ $(function(){
       PP.Instructions.REP,
       PP.Instructions.NOP
     ];
-    
-    equal(pixel.depth, 10, 'the pixel should have the right depth');
-    equal(pixel.genome.length, 10, 'the genome should have the right length');
-    equal(pixel.memory.length, 10, 'the memory should have the right length');
-    
     deepEqual(pixel.genome, expectedGenome, 'the genome should be initialized to the parsed genome');
-    PP.eachEqual(pixel.memory, PP.Instructions.NOP, 'the memory should be initialized to NOP (0)');
+    
+    PP.Test.eachEqual(pixel.memory, PP.Instructions.HALT, 'the memory should be initialized to HALT (0)');
   });
   
   test('pixel serialization', function(){
+    var data = {
+      id: PP.randomUUID(),
+      parentId: PP.randomUUID(),
+      originatorId: PP.randomUUID(),
+      generation: '1000',
+      genome: ' rep \n write \n sense \n fork \n in \n share \n kill \n halt \n xchg \n turn '
+    };
     
+    var pixel = new PP.Pixel({
+      data: data
+    });
+    
+    var actual = pixel.serialize();
+    var expected = _.extend({}, data, {
+      genome: PP.Genome.print([
+        PP.Instructions.REP,
+        PP.Instructions.WRITE,
+        PP.Instructions.SENSE,
+        PP.Instructions.FORK,
+        PP.Instructions.IN,
+        PP.Instructions.SHARE,
+        PP.Instructions.KILL,
+        PP.Instructions.HALT,
+        PP.Instructions.XCHG,
+        PP.Instructions.TURN
+      ])
+    });
+    
+    deepEqual(expected, actual, 'the serialized data should be the same as the (normalized) inital data');
   });
   
   module('Simulator :: Pond');

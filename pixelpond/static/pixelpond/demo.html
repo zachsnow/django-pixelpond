@@ -20,28 +20,52 @@
     <script type="text/javascript" src="js/ui.js"></script>
     <script type="text/javascript">
       var PP = PixelPond;
+      //PP.nice(100);
+
       var demo = function(){
+        var sample = PP.Genome.parse(
+          'halt; decr; loop; decr; nop; xchg; ' +
+          'loop; back; back; turn; kill; recv; ' +
+          'incr; decr; read; write; out; incr; ' +
+          'decr; nop; write; share; back; post; ' +
+          'fork; read; sense; read; rep; write; ' +
+          'read; nop;',
+          'compressed'
+        );
+        
         var pond = new PP.Pond({
+          depth: 32,
           width: 32,
           height: 32
         });
+        pond.seed(sample)
         
         var simulator = new PP.Simulator({
-          pond: pond,
-          cyclesPerEra: 100
+          pond: pond
         });
         
         var canvas = new PP.Canvas({
+          scale: 6,
           simulator: simulator
         });
         
         simulator.on('era', function(options){
-          $('#info').text('Era ' + options.era);
+          if(options.era % 5 == 0){
+            $('#info').text('Era ' + options.era);
+          }
         });
         
-        $('#pond').append(canvas.$el);
+        $('#pond-width').text(pond.width);
+        $('#pond-height').text(pond.height);
+        $('#pond-depth').text(pond.depth);
         
-        simulator.run(1024);
+        $('#pond').append(canvas.$el);
+        $('#start').click(function(){
+          PP.delay(simulator.run, simulator);
+        });
+        $('#stop').click(function(){
+          simulator.stop();
+        });
       };
       
       $(demo);
@@ -60,17 +84,23 @@
       
       #pond canvas {
         border: 2px solid #ff0000;
+        background-color: black;
       }
       
       #pond canvas.running {
         border: 2px solid #00ff00;
       }
       
-      #description {
+      #description, #stats {
         float: right;
+        clear: right;
         width: 300px;
-        padding: 0;
+        padding: 0 0 10px 0;
         margin: 0;
+      }
+            
+      #start, #stop {
+        
       }
     </style>
   </head>
@@ -86,8 +116,17 @@
         replicate.  This is referred to as <i>abiogenesis</i>.
       </p>
       
+      <p id="stats">
+        Pond width: <span id="pond-width"></span><br />
+        Pond height: <span id="pond-height"></span><br />
+        Pond depth: <span id="pond-depth"></span><br />
+      </p>
+      
       <div id="pond"></div>
       <p id="info"></p>
+      
+      <button id="start">Start</button>
+      <button id="stop">Stop</button>
     </div>
   </body>
 </html>

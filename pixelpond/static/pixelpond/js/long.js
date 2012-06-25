@@ -161,6 +161,15 @@
     return result;
   };
   
+  PP.Long.fromUUID = function(uuid) {
+    if(!uuid){
+      return PP.Long.ZERO;
+    }
+    
+    var str = uuid.substr(24);
+    return PP.Long.fromString(str, 16);
+  };
+  
   
   // NOTE: the compiler should inline these constant values below and then remove
   // these variables, so there should be no runtime penalty for these.
@@ -228,7 +237,6 @@
   
   /** @type {!PP.Long} */
   PP.Long.ONE = PP.Long.fromInt(1);
-  
   
   /** @type {!PP.Long} */
   PP.Long.NEG_ONE = PP.Long.fromInt(-1);
@@ -676,4 +684,116 @@
     return this.subtract(this.div(other).multiply(other));
   };
   
+  /** @return {!PP.Long} The bitwise-NOT of this value. */
+  PP.Long.prototype.not = function() {
+    return PP.Long.fromBits(~this.low_, ~this.high_);
+  };
+  
+  
+  /**
+   * Returns the bitwise-AND of this Long and the given one.
+   * @param {PP.Long} other The Long with which to AND.
+   * @return {!PP.Long} The bitwise-AND of this and the other.
+   */
+  PP.Long.prototype.and = function(other) {
+    return PP.Long.fromBits(this.low_ & other.low_,
+                                   this.high_ & other.high_);
+  };
+  
+  
+  /**
+   * Returns the bitwise-OR of this Long and the given one.
+   * @param {PP.Long} other The Long with which to OR.
+   * @return {!PP.Long} The bitwise-OR of this and the other.
+   */
+  PP.Long.prototype.or = function(other) {
+    return PP.Long.fromBits(this.low_ | other.low_,
+                                   this.high_ | other.high_);
+  };
+  
+  
+  /**
+   * Returns the bitwise-XOR of this Long and the given one.
+   * @param {PP.Long} other The Long with which to XOR.
+   * @return {!PP.Long} The bitwise-XOR of this and the other.
+   */
+  PP.Long.prototype.xor = function(other) {
+    return PP.Long.fromBits(this.low_ ^ other.low_,
+                                   this.high_ ^ other.high_);
+  };
+  
+  
+  /**
+   * Returns this Long with bits shifted to the left by the given amount.
+   * @param {number} numBits The number of bits by which to shift.
+   * @return {!PP.Long} This shifted to the left by the given amount.
+   */
+  PP.Long.prototype.shiftLeft = function(numBits) {
+    numBits &= 63;
+    if (numBits == 0) {
+      return this;
+    } else {
+      var low = this.low_;
+      if (numBits < 32) {
+        var high = this.high_;
+        return PP.Long.fromBits(
+            low << numBits,
+            (high << numBits) | (low >>> (32 - numBits)));
+      } else {
+        return PP.Long.fromBits(0, low << (numBits - 32));
+      }
+    }
+  };
+  
+  
+  /**
+   * Returns this Long with bits shifted to the right by the given amount.
+   * @param {number} numBits The number of bits by which to shift.
+   * @return {!PP.Long} This shifted to the right by the given amount.
+   */
+  PP.Long.prototype.shiftRight = function(numBits) {
+    numBits &= 63;
+    if (numBits == 0) {
+      return this;
+    } else {
+      var high = this.high_;
+      if (numBits < 32) {
+        var low = this.low_;
+        return PP.Long.fromBits(
+            (low >>> numBits) | (high << (32 - numBits)),
+            high >> numBits);
+      } else {
+        return PP.Long.fromBits(
+            high >> (numBits - 32),
+            high >= 0 ? 0 : -1);
+      }
+    }
+  };
+  
+  
+  /**
+   * Returns this Long with bits shifted to the right by the given amount, with
+   * the new top bits matching the current sign bit.
+   * @param {number} numBits The number of bits by which to shift.
+   * @return {!PP.Long} This shifted to the right by the given amount, with
+   *     zeros placed into the new leading bits.
+   */
+  PP.Long.prototype.shiftRightUnsigned = function(numBits) {
+    numBits &= 63;
+    if (numBits == 0) {
+      return this;
+    } else {
+      var high = this.high_;
+      if (numBits < 32) {
+        var low = this.low_;
+        return PP.Long.fromBits(
+            (low >>> numBits) | (high << (32 - numBits)),
+            high >>> numBits);
+      } else if (numBits == 32) {
+        return PP.Long.fromBits(high, 0);
+      } else {
+        return PP.Long.fromBits(high >>> (numBits - 32), 0);
+      }
+    }
+  };
 })(PixelPond)

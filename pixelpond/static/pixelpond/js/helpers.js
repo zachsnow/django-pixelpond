@@ -1,9 +1,23 @@
 (function(PP){
+  _.choose = function(l, iterator, context){
+    var result = [];
+    _.forEach(l, function(element){
+      var e = iterator.call(context, element);
+      if(!_.isUndefined(e)){
+        result.push(e);
+      }
+    });
+    return result;
+  };
+  
+  PP.assert = function(t){
+    if(!t){
+      debugger;
+    }
+  };
+  
   PP.clamp = function(i, max){
-    i %= max;
-    i += max;
-    i %= max;
-    return i;
+    return (i + max) % max;
   };
   
   PP.logAll = function(){
@@ -59,7 +73,7 @@
   
   PP.randomInt = function(max){
     var r = twister.genrand_int32();
-    if(_.isUndefined(max)){
+    if(!max){
       return r;
     }
     return r % max;
@@ -73,17 +87,19 @@
   };
   
   PP.randomUUID = function(){
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = (PP.random() * 16) | 0, v = c == 'x' ? r : (r&0x3|0x8);
-      return v.toString(16);
+    var uuid = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'.replace(/xxxx/g, function(c) {
+      return PP.randomInt(65536).toString(16);
     });
+    return uuid;
   };
   
   PP.randomInstruction = function(){
-    return PP.randomInt(PP.Instructions.INSTRUCTION_NAMES.length);
+    var instruction = PP.randomInt(PP.Instructions.INSTRUCTION_NAMES.length);
+    return instruction;
   };
   
   PP.zeroUUID = function(){
+    return null;
     return '00000000-0000-4000-8000-000000000000';
   };
   
@@ -123,7 +139,7 @@
   
   PP.delay = function(){
     var args = _.toArray(arguments);
-    setTimeout(function(){
+    return setTimeout(function(){
       _.bind.apply(_, args)();
     }, niceness);
   };
@@ -131,7 +147,9 @@
   //////////////////////////////////////////////////////////////////////////////
   // Testing.
   //////////////////////////////////////////////////////////////////////////////
-  PP.eachEqual = function(list, value, msg){
+  PP.Test = {};
+  PP.Test.eachEqual = function(list, value, msg){
+    console.info('each equal', list, value);
     QUnit.ok(_.all(list, function(element){
       return element === value;
     }), msg);
